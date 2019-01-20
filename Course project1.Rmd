@@ -1,0 +1,81 @@
+---
+title: "Course Project Machine Learning"
+author: "Philip Wikman"
+date: "19 de enero de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(randomForest)
+library(doParallel) 
+
+```
+
+## Reading in data
+
+```{r data}
+training<-read.csv("pml-training.csv",na.strings=c("NA","","#DIV/0!"))
+testing<-read.csv("pml-testing.csv",na.strings=c("NA","","#DIV/0!"))
+```
+
+# Cleaning the data
+## Removing variables that have NAs
+```{r}
+NotNA<-(colSums(is.na(training))==0)
+training2<-training[,NotNA]
+```
+
+## Removing not informative variables
+```{r}
+notINF<-grepl("^X|user_name|cvtd_timestamp", names(training2))
+training3<-training2[,!notINF]
+```
+## Removing near zero variance variables
+```{r}
+NZV<-nearZeroVar(training3, saveMetrics=TRUE)
+training4<-training3[,!NZV$nzv]
+```
+
+#Creating the model
+
+## Partitioning the data
+```{r}
+inTrain<-createDataPartition(y=training4$classe, p=0.7, list=F)
+trainData<-training4[inTrain,]
+testData<-training4[-inTrain,]
+```
+
+## Fitting a random forest model to predict the classe variable
+
+```{r train}
+set.seed(1)
+mod<-randomForest(classe~., data=trainData, type="class")
+```
+
+#Evaluating the model
+
+## Getting in sample error
+
+```{r}
+pred1<-predict(mod, trainData, type="class")
+confusionMatrix(pred1, trainData$classe)
+```
+
+## Estimating out of sample error
+
+```{r}
+pred2<-predict(mod, testData, type="class")
+confusionMatrix(pred2, testData$classe)
+```
+
+## Predicting 20 test cases
+
+```{r}
+testing2<-testing[,NotNA]
+testing3<-testing2[,!notINF]
+testing4<-testing3[,!NZV$nzv]
+pred3<-predict(mod, newdata=testing)
+pred3
+```
